@@ -6,4 +6,7 @@ sounddevice
 scipy
 librosa
 webrtcvad
-pyaudio 
+pyaudio
+flask
+flask-socketio
+psycopg2-binary 

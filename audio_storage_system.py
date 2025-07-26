@@ -713,33 +713,30 @@ class AudioStorageSystem:
             print("🔧 JSON-based retrieval not implemented yet")
             return None
     
-    def list_all_audio(self, limit: int = 50) -> List[Dict]:
-        """List all stored audio files"""
+    def list_all_audio(self, limit: int = 50, offset: int = 0) -> List[Dict]:
+        """List all stored audio files with pagination support"""
         if self.storage_backend == "sqlite":
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT af.*, t.transcription, COUNT(e.id) as embedding_count
+                SELECT af.*, t.transcription, t.confidence, t.language, 
+                       (SELECT COUNT(*) FROM embeddings WHERE audio_file_id = af.id) as embedding_count
                 FROM audio_files af
                 LEFT JOIN transcripts t ON af.id = t.audio_file_id
-                LEFT JOIN embeddings e ON af.id = e.audio_file_id
-                GROUP BY af.id
                 ORDER BY af.created_at DESC
-                LIMIT ?
-            """, (limit,))
+                LIMIT ? OFFSET ?
+            """, (limit, offset))
             
             return [dict(row) for row in cursor.fetchall()]
         
         elif self.storage_backend == "postgres":
             self.cursor.execute("""
-                SELECT af.*, t.transcription, COUNT(e.id) as embedding_count
+                SELECT af.*, t.transcription, t.confidence, t.language, 
+                       (SELECT COUNT(*) FROM embeddings WHERE audio_file_id = af.id) as embedding_count
                 FROM audio_files af
                 LEFT JOIN transcripts t ON af.id = t.audio_file_id
-                LEFT JOIN embeddings e ON af.id = e.audio_file_id
-                GROUP BY af.id, af.file_hash, af.file_path, af.file_size, af.duration, 
-                         af.sample_rate, af.channels, af.created_at, af.updated_at, t.transcription
                 ORDER BY af.created_at DESC
-                LIMIT %s
-            """, (limit,))
+                LIMIT %s OFFSET %s
+            """, (limit, offset))
             
             return [dict(row) for row in self.cursor.fetchall()]
         
@@ -747,8 +744,59 @@ class AudioStorageSystem:
             with open(self.audio_index_file, 'r') as f:
                 audio_index = json.load(f)
             
-            return list(audio_index.values())[:limit]
+            audio_list = list(audio_index.values())
+            return audio_list[offset:offset + limit]
     
+    def get_audio_count(self) -> int:
+        """Get total number of audio files"""
+        if self.storage_backend == "sqlite":
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM audio_files")
+            return cursor.fetchone()['count']
+        elif self.storage_backend == "postgres":
+            self.cursor.execute("SELECT COUNT(*) as count FROM audio_files")
+            return self.cursor.fetchone()['count']
+        elif self.storage_backend == "json":
+            # Count files in JSON storage
+            return len(self.audio_index)
+        return 0
+
+    def get_transcript_count(self) -> int:
+        """Get total number of transcripts"""
+        if self.storage_backend == "sqlite":
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM transcripts")
+            return cursor.fetchone()['count']
+        elif self.storage_backend == "postgres":
+            self.cursor.execute("SELECT COUNT(*) as count FROM transcripts")
+            return self.cursor.fetchone()['count']
+        elif self.storage_backend == "json":
+            # Count transcripts in JSON storage
+            count = 0
+            for audio_info in self.audio_index.values():
+                if 'transcript' in audio_info:
+                    count += 1
+            return count
+        return 0
+
+    def get_embedding_count(self) -> int:
+        """Get total number of embeddings"""
+        if self.storage_backend == "sqlite":
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM embeddings")
+            return cursor.fetchone()['count']
+        elif self.storage_backend == "postgres":
+            self.cursor.execute("SELECT COUNT(*) as count FROM embeddings")
+            return self.cursor.fetchone()['count']
+        elif self.storage_backend == "json":
+            # Count embeddings in JSON storage
+            count = 0
+            for audio_info in self.audio_index.values():
+                if 'embeddings' in audio_info:
+                    count += len(audio_info['embeddings'])
+            return count
+        return 0
+
     def cleanup_old_files(self, days_old: int = 30):
         """Clean up old audio files and database entries"""
         print(f"🧹 Cleaning up files older than {days_old} days...")

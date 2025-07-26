@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Record Audio - WhisperPOC{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-microphone me-2"></i>
+            Record Audio
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Recording Interface -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-microphone me-2"></i>
+                    Audio Recorder
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Recording Status -->
+                <div id="recording-status" class="text-center mb-4">
+                    <div class="recording-indicator" id="recording-indicator" style="display: none;">
+                        <i class="fas fa-circle text-danger fa-3x mb-3"></i>
+                        <h4 class="text-danger">Recording...</h4>
+                    </div>
+                    <div id="idle-status">
+                        <i class="fas fa-microphone fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">Ready to Record</h4>
+                        <p class="text-muted">Click the record button to start recording audio</p>
+                    </div>
+                </div>
+
+                <!-- Recording Controls -->
+                <div class="text-center mb-4">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-success btn-lg" id="start-record-btn" onclick="startRecording()">
+                            <i class="fas fa-microphone me-2"></i>
+                            Start Recording
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg" id="stop-record-btn" onclick="stopRecording()" style="display: none;">
+                            <i class="fas fa-stop me-2"></i>
+                            Stop Recording
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recording Progress -->
+                <div id="recording-progress" style="display: none;">
+                    <div class="progress mb-3">
+                        <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center">
+                        <span id="time-elapsed">0s</span> / <span id="total-duration">30s</span>
+                    </div>
+                </div>
+
+                <!-- Recording Settings -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <label for="duration" class="form-label">Recording Duration (seconds)</label>
+                        <input type="number" class="form-control" id="duration" value="30" min="5" max="300">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="whisper-model" class="form-label">Whisper Model</label>
+                        <select class="form-select" id="whisper-model">
+                            <option value="tiny">Tiny (fastest)</option>
+                            <option value="base" selected>Base (balanced)</option>
+                            <option value="small">Small (better accuracy)</option>
+                            <option value="medium">Medium (high accuracy)</option>
+                            <option value="large">Large (best accuracy)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="mt-4">
+                    <label for="metadata" class="form-label">Metadata (JSON)</label>
+                    <textarea class="form-control" id="metadata" rows="3" placeholder='{"description": "Meeting notes", "speaker": "John Doe", "topic": "Project discussion"}'></textarea>
+                    <div class="form-text">Optional metadata to store with the recording</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Recordings -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Recordings
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="recent-recordings">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Loading recent recordings...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Recording Tips -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Recording Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Speak clearly and at a normal pace
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Minimize background noise
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Keep microphone at consistent distance
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Use shorter recordings for better accuracy
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Model Information -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Model Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="model-info">
+                    <h6>Base Model</h6>
+                    <p class="small text-muted">
+                        Good balance between speed and accuracy. 
+                        Suitable for most use cases.
+                    </p>
+                    <ul class="small text-muted">
+                        <li>Speed: Medium</li>
+                        <li>Accuracy: Good</li>
+                        <li>Memory: ~1GB</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-server me-2"></i>
+                    System Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="system-status">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Database:</span>
+                        <span id="db-status" class="badge bg-success">Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Storage:</span>
+                        <span id="storage-status" class="badge bg-success">Available</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Whisper:</span>
+                        <span id="whisper-status" class="badge bg-success">Ready</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let recordingStartTime = null;
+    let recordingInterval = null;
+    let currentDuration = 30;
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        loadRecentRecordings();
+        updateModelInfo();
+        
+        // Update duration when changed
+        document.getElementById('duration').addEventListener('change', function() {
+            currentDuration = parseInt(this.value);
+            document.getElementById('total-duration').textContent = currentDuration + 's';
+        });
+        
+        // Update model info when changed
+        document.getElementById('whisper-model').addEventListener('change', updateModelInfo);
+    });
+
+    // Start recording
+    function startRecording() {
+        const duration = parseInt(document.getElementById('duration').value);
+        const whisperModel = document.getElementById('whisper-model').value;
+        const metadataText = document.getElementById('metadata').value;
+        
+        let metadata = {};
+        if (metadataText.trim()) {
+            try {
+                metadata = JSON.parse(metadataText);
+            } catch (e) {
+                showNotification('Invalid JSON in metadata field', 'warning');
+                return;
+            }
+        }
+
+        // Update UI
+        document.getElementById('start-record-btn').style.display = 'none';
+        document.getElementById('stop-record-btn').style.display = 'inline-block';
+        document.getElementById('recording-indicator').style.display = 'block';
+        document.getElementById('idle-status').style.display = 'none';
+        document.getElementById('recording-progress').style.display = 'block';
+
+        // Start progress tracking
+        recordingStartTime = Date.now();
+        recordingInterval = setInterval(updateProgress, 100);
+
+        // Send recording request to server
+        fetch('/api/record', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                duration: duration,
+                whisper_model: whisperModel,
+                metadata: metadata
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Recording completed successfully!', 'success');
+                loadRecentRecordings(); // Refresh the list
+            } else {
+                showNotification('Recording failed: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showNotification('Error during recording: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            stopRecordingUI();
+        });
+    }
+
+    // Stop recording
+    function stopRecording() {
+        if (socket) {
+            socket.emit('stop_recording');
+        }
+        stopRecordingUI();
+    }
+
+    // Stop recording UI
+    function stopRecordingUI() {
+        document.getElementById('start-record-btn').style.display = 'inline-block';
+        document.getElementById('stop-record-btn').style.display = 'none';
+        document.getElementById('recording-indicator').style.display = 'none';
+        document.getElementById('idle-status').style.display = 'block';
+        document.getElementById('recording-progress').style.display = 'none';
+        
+        if (recordingInterval) {
+            clearInterval(recordingInterval);
+            recordingInterval = null;
+        }
+        
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('time-elapsed').textContent = '0s';
+    }
+
+    // Update progress bar
+    function updateProgress() {
+        if (!recordingStartTime) return;
+        
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const progress = Math.min(100, (elapsed / currentDuration) * 100);
+        
+        document.getElementById('progress-bar').style.width = progress + '%';
+        document.getElementById('time-elapsed').textContent = elapsed + 's';
+        
+        if (elapsed >= currentDuration) {
+            stopRecordingUI();
+        }
+    }
+
+    // Load recent recordings
+    function loadRecentRecordings() {
+        fetch('/api/statistics')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // For now, we'll just show a count
+                    // In a full implementation, you'd fetch the actual recent recordings
+                    document.getElementById('recent-recordings').innerHTML = `
+                        <div class="text-center">
+                            <h6>${data.statistics.audio_count} Total Recordings</h6>
+                            <p class="text-muted">${data.statistics.today_count} recorded today</p>
+                            <a href="/browse" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-folder-open me-2"></i>Browse All
+                            </a>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('recent-recordings').innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Unable to load recent recordings
+                    </div>
+                `;
+            });
+    }
+
+    // Update model information
+    function updateModelInfo() {
+        const model = document.getElementById('whisper-model').value;
+        const modelInfo = {
+            'tiny': {
+                name: 'Tiny Model',
+                description: 'Fastest model, suitable for real-time applications.',
+                speed: 'Very Fast',
+                accuracy: 'Basic',
+                memory: '~39MB'
+            },
+            'base': {
+                name: 'Base Model',
+                description: 'Good balance between speed and accuracy.',
+                speed: 'Fast',
+                accuracy: 'Good',
+                memory: '~74MB'
+            },
+            'small': {
+                name: 'Small Model',
+                description: 'Better accuracy with reasonable speed.',
+                speed: 'Medium',
+                accuracy: 'Better',
+                memory: '~244MB'
+            },
+            'medium': {
+                name: 'Medium Model',
+                description: 'High accuracy for important recordings.',
+                speed: 'Slow',
+                accuracy: 'High',
+                memory: '~769MB'
+            },
+            'large': {
+                name: 'Large Model',
+                description: 'Best accuracy, requires more resources.',
+                speed: 'Very Slow',
+                accuracy: 'Best',
+                memory: '~1550MB'
+            }
+        };
+
+        const info = modelInfo[model];
+        document.getElementById('model-info').innerHTML = `
+            <h6>${info.name}</h6>
+            <p class="small text-muted">${info.description}</p>
+            <ul class="small text-muted">
+                <li>Speed: ${info.speed}</li>
+                <li>Accuracy: ${info.accuracy}</li>
+                <li>Memory: ${info.memory}</li>
+            </ul>
+        `;
+    }
+
+    // Socket.IO events for real-time recording
+    if (socket) {
+        socket.on('recording_started', function(data) {
+            showNotification('Recording started for ' + data.duration + ' seconds', 'info');
+        });
+
+        socket.on('recording_progress', function(data) {
+            document.getElementById('progress-bar').style.width = data.progress + '%';
+            document.getElementById('time-elapsed').textContent = data.time_elapsed + 's';
+        });
+
+        socket.on('recording_complete', function(data) {
+            showNotification(data.message, 'info');
+        });
+
+        socket.on('processing_complete', function(data) {
+            showNotification(data.message, 'success');
+            loadRecentRecordings();
+        });
+
+        socket.on('recording_stopped', function(data) {
+            showNotification(data.message, 'info');
+        });
+    }
+</script>
+{% endblock %} 

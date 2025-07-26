@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - WhisperPOC{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0">{{ audio_count }}</h3>
+                    <p class="mb-0">Audio Files</p>
+                </div>
+                <i class="fas fa-microphone fa-2x"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0">{{ transcript_count }}</h3>
+                    <p class="mb-0">Transcripts</p>
+                </div>
+                <i class="fas fa-file-alt fa-2x"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0">{{ embedding_count }}</h3>
+                    <p class="mb-0">Embeddings</p>
+                </div>
+                <i class="fas fa-brain fa-2x"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0" id="today-count">-</h3>
+                    <p class="mb-0">Today</p>
+                </div>
+                <i class="fas fa-calendar-day fa-2x"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="/record" class="btn btn-primary w-100">
+                            <i class="fas fa-microphone me-2"></i>
+                            Record Audio
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/browse" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-folder-open me-2"></i>
+                            Browse Files
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="/search" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-search me-2"></i>
+                            Search Content
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-success w-100" onclick="exportData()">
+                            <i class="fas fa-download me-2"></i>
+                            Export Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Recordings -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    Recent Recordings
+                </h5>
+                <a href="/browse" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_audio %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Duration</th>
+                                <th>Transcription</th>
+                                <th>Confidence</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for audio in recent_audio %}
+                            <tr>
+                                <td>{{ audio.id }}</td>
+                                <td>{{ "%.1f"|format(audio.duration) }}s</td>
+                                <td>
+                                    {% if audio.transcription %}
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ audio.transcription }}">
+                                            {{ audio.transcription[:50] }}{% if audio.transcription|length > 50 %}...{% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">No transcription</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if audio.confidence %}
+                                        <span class="badge bg-{% if audio.confidence > 0.8 %}success{% elif audio.confidence > 0.6 %}warning{% else %}danger{% endif %}">
+                                            {{ "%.1f"|format(audio.confidence * 100) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ audio.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="viewAudio({{ audio.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success" onclick="downloadAudio({{ audio.id }})">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteAudio({{ audio.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-microphone-slash fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No recordings yet</h5>
+                    <p class="text-muted">Start by recording your first audio file!</p>
+                    <a href="/record" class="btn btn-primary">
+                        <i class="fas fa-microphone me-2"></i>
+                        Record Audio
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load statistics on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStatistics();
+    });
+
+    // Load system statistics
+    function loadStatistics() {
+        fetch('/api/statistics')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('today-count').textContent = data.statistics.today_count;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading statistics:', error);
+            });
+    }
+
+    // View audio details
+    function viewAudio(audioId) {
+        fetch(`/api/audio/${audioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAudioModal(data.audio_info);
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading audio details', 'danger');
+            });
+    }
+
+    // Download audio file
+    function downloadAudio(audioId) {
+        window.open(`/api/audio/${audioId}/download`, '_blank');
+    }
+
+    // Delete audio file
+    function deleteAudio(audioId) {
+        if (confirm('Are you sure you want to delete this audio file? This action cannot be undone.')) {
+            fetch(`/api/audio/${audioId}/delete`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Audio file deleted successfully', 'success');
+                    // Reload page to update the list
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error deleting audio file', 'danger');
+            });
+        }
+    }
+
+    // Export data
+    function exportData() {
+        const format = prompt('Enter export format (json or csv):', 'json');
+        if (format && ['json', 'csv'].includes(format.toLowerCase())) {
+            fetch(`/api/export?format=${format}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (format === 'json') {
+                            // Download JSON file
+                            const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `whisperpoc_export_${new Date().toISOString().split('T')[0]}.json`;
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                        } else {
+                            // Download CSV file
+                            const blob = new Blob([data.data], { type: 'text/csv' });
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `whisperpoc_export_${new Date().toISOString().split('T')[0]}.csv`;
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                        }
+                        showNotification('Data exported successfully', 'success');
+                    } else {
+                        showNotification(data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error exporting data', 'danger');
+                });
+        }
+    }
+
+    // Show audio details modal
+    function showAudioModal(audioInfo) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Audio Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>File Information</h6>
+                                <p><strong>ID:</strong> ${audioInfo.audio_file.id}</p>
+                                <p><strong>Duration:</strong> ${audioInfo.audio_file.duration}s</p>
+                                <p><strong>File Size:</strong> ${formatFileSize(audioInfo.audio_file.file_size)}</p>
+                                <p><strong>Created:</strong> ${formatDate(audioInfo.audio_file.created_at)}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Transcription</h6>
+                                ${audioInfo.transcript ? `
+                                    <p><strong>Text:</strong> ${audioInfo.transcript.transcription}</p>
+                                    <p><strong>Confidence:</strong> ${(audioInfo.transcript.confidence * 100).toFixed(1)}%</p>
+                                    <p><strong>Language:</strong> ${audioInfo.transcript.language || 'Unknown'}</p>
+                                ` : '<p class="text-muted">No transcription available</p>'}
+                            </div>
+                        </div>
+                        ${audioInfo.metadata ? `
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Metadata</h6>
+                                    <pre class="bg-light p-2 rounded">${JSON.stringify(audioInfo.metadata, null, 2)}</pre>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadAudio(${audioInfo.audio_file.id})">
+                            <i class="fas fa-download me-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        modal.addEventListener('hidden.bs.modal', function() {
+            document.body.removeChild(modal);
+        });
+    }
+</script>
+{% endblock %} 

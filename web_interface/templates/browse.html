@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Audio Files - WhisperPOC{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-folder-open me-2"></i>
+            Browse Audio Files
+        </h1>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="search-input" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="search-input" placeholder="Search transcriptions...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="confidence-filter" class="form-label">Confidence</label>
+                        <select class="form-select" id="confidence-filter">
+                            <option value="">All</option>
+                            <option value="high">High (>80%)</option>
+                            <option value="medium">Medium (60-80%)</option>
+                            <option value="low">Low (<60%)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="language-filter" class="form-label">Language</label>
+                        <select class="form-select" id="language-filter">
+                            <option value="">All</option>
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="it">Italian</option>
+                            <option value="pt">Portuguese</option>
+                            <option value="ru">Russian</option>
+                            <option value="ja">Japanese</option>
+                            <option value="ko">Korean</option>
+                            <option value="zh">Chinese</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-primary w-100" onclick="applyFilters()">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audio Files Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Audio Files ({{ total_count }} total)
+                </h5>
+                <div>
+                    <button class="btn btn-outline-success btn-sm" onclick="exportCurrentView()">
+                        <i class="fas fa-download me-2"></i>Export
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteSelected()">
+                        <i class="fas fa-trash me-2"></i>Delete Selected
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if audio_files %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                                </th>
+                                <th>ID</th>
+                                <th>Duration</th>
+                                <th>Transcription</th>
+                                <th>Confidence</th>
+                                <th>Language</th>
+                                <th>File Size</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audio-files-tbody">
+                            {% for audio in audio_files %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="audio-checkbox" value="{{ audio.id }}">
+                                </td>
+                                <td>{{ audio.id }}</td>
+                                <td>{{ "%.1f"|format(audio.duration) }}s</td>
+                                <td>
+                                    {% if audio.transcription %}
+                                        <span class="text-truncate d-inline-block" style="max-width: 250px;" title="{{ audio.transcription }}">
+                                            {{ audio.transcription[:60] }}{% if audio.transcription|length > 60 %}...{% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">No transcription</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if audio.confidence %}
+                                        <span class="badge bg-{% if audio.confidence > 0.8 %}success{% elif audio.confidence > 0.6 %}warning{% else %}danger{% endif %}">
+                                            {{ "%.1f"|format(audio.confidence * 100) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if audio.language %}
+                                        <span class="badge bg-info">{{ audio.language.upper() }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ formatFileSize(audio.file_size) }}</td>
+                                <td>{{ audio.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="viewAudio({{ audio.id }})" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success" onclick="downloadAudio({{ audio.id }})" title="Download">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button class="btn btn-outline-info" onclick="playAudio({{ audio.id }})" title="Play">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteAudio({{ audio.id }})" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <nav aria-label="Audio files pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ current_page - 1 }}" {% if current_page == 1 %}tabindex="-1"{% endif %}>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                        
+                        {% for page in range(1, total_pages + 1) %}
+                            {% if page == current_page %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page }}</span>
+                                </li>
+                            {% elif page <= 3 or page > total_pages - 3 or (page >= current_page - 1 and page <= current_page + 1) %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page }}">{{ page }}</a>
+                                </li>
+                            {% elif page == 4 and current_page > 6 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% elif page == total_pages - 3 and current_page < total_pages - 5 %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="?page={{ current_page + 1 }}" {% if current_page == total_pages %}tabindex="-1"{% endif %}>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No audio files found</h5>
+                    <p class="text-muted">Try adjusting your search criteria or record some audio first.</p>
+                    <a href="/record" class="btn btn-primary">
+                        <i class="fas fa-microphone me-2"></i>
+                        Record Audio
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audio Player Modal -->
+<div class="modal fade" id="audioPlayerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Audio Player</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <audio id="audio-player" controls class="w-100">
+                    Your browser does not support the audio element.
+                </audio>
+                <div id="audio-info" class="mt-3">
+                    <!-- Audio information will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let selectedAudioIds = [];
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listeners for search
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+    });
+
+    // Apply filters and search
+    function applyFilters() {
+        const searchTerm = document.getElementById('search-input').value;
+        const confidence = document.getElementById('confidence-filter').value;
+        const language = document.getElementById('language-filter').value;
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (confidence) params.append('confidence', confidence);
+        if (language) params.append('language', language);
+        params.append('page', '1'); // Reset to first page
+        
+        // Redirect with filters
+        window.location.href = '/browse?' + params.toString();
+    }
+
+    // Toggle select all checkboxes
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('select-all');
+        const checkboxes = document.querySelectorAll('.audio-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+        });
+        
+        updateSelectedCount();
+    }
+
+    // Update selected count
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.audio-checkbox:checked');
+        selectedAudioIds = Array.from(checkboxes).map(cb => cb.value);
+        
+        // Update UI to show selected count
+        const deleteBtn = document.querySelector('button[onclick="deleteSelected()"]');
+        if (selectedAudioIds.length > 0) {
+            deleteBtn.textContent = `Delete Selected (${selectedAudioIds.length})`;
+            deleteBtn.classList.remove('btn-outline-danger');
+            deleteBtn.classList.add('btn-danger');
+        } else {
+            deleteBtn.innerHTML = '<i class="fas fa-trash me-2"></i>Delete Selected';
+            deleteBtn.classList.remove('btn-danger');
+            deleteBtn.classList.add('btn-outline-danger');
+        }
+    }
+
+    // Add event listeners to checkboxes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('audio-checkbox')) {
+            updateSelectedCount();
+        }
+    });
+
+    // View audio details
+    function viewAudio(audioId) {
+        fetch(`/api/audio/${audioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAudioModal(data.audio_info);
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading audio details', 'danger');
+            });
+    }
+
+    // Download audio file
+    function downloadAudio(audioId) {
+        window.open(`/api/audio/${audioId}/download`, '_blank');
+    }
+
+    // Play audio file
+    function playAudio(audioId) {
+        fetch(`/api/audio/${audioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const audioInfo = data.audio_info;
+                    const audioPlayer = document.getElementById('audio-player');
+                    const audioInfoDiv = document.getElementById('audio-info');
+                    
+                    // Set audio source
+                    audioPlayer.src = `/api/audio/${audioId}/download`;
+                    
+                    // Update info
+                    audioInfoDiv.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Duration:</strong> ${audioInfo.audio_file.duration}s<br>
+                                <strong>File Size:</strong> ${formatFileSize(audioInfo.audio_file.file_size)}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Created:</strong> ${formatDate(audioInfo.audio_file.created_at)}<br>
+                                <strong>Confidence:</strong> ${audioInfo.transcript ? (audioInfo.transcript.confidence * 100).toFixed(1) + '%' : 'N/A'}
+                            </div>
+                        </div>
+                        ${audioInfo.transcript ? `
+                            <div class="mt-3">
+                                <strong>Transcription:</strong><br>
+                                <p class="text-muted">${audioInfo.transcript.transcription}</p>
+                            </div>
+                        ` : ''}
+                    `;
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('audioPlayerModal'));
+                    modal.show();
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading audio file', 'danger');
+            });
+    }
+
+    // Delete single audio file
+    function deleteAudio(audioId) {
+        if (confirm('Are you sure you want to delete this audio file? This action cannot be undone.')) {
+            fetch(`/api/audio/${audioId}/delete`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Audio file deleted successfully', 'success');
+                    // Remove from table
+                    const row = document.querySelector(`tr:has(input[value="${audioId}"])`);
+                    if (row) row.remove();
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error deleting audio file', 'danger');
+            });
+        }
+    }
+
+    // Delete selected audio files
+    function deleteSelected() {
+        if (selectedAudioIds.length === 0) {
+            showNotification('No audio files selected', 'warning');
+            return;
+        }
+        
+        if (confirm(`Are you sure you want to delete ${selectedAudioIds.length} audio file(s)? This action cannot be undone.`)) {
+            const deletePromises = selectedAudioIds.map(audioId => 
+                fetch(`/api/audio/${audioId}/delete`, { method: 'DELETE' })
+                    .then(response => response.json())
+            );
+            
+            Promise.all(deletePromises)
+                .then(results => {
+                    const successCount = results.filter(r => r.success).length;
+                    const errorCount = results.length - successCount;
+                    
+                    if (successCount > 0) {
+                        showNotification(`${successCount} audio file(s) deleted successfully`, 'success');
+                        // Reload page to update the list
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                    
+                    if (errorCount > 0) {
+                        showNotification(`${errorCount} audio file(s) could not be deleted`, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error deleting audio files', 'danger');
+                });
+        }
+    }
+
+    // Export current view
+    function exportCurrentView() {
+        const searchTerm = document.getElementById('search-input').value;
+        const confidence = document.getElementById('confidence-filter').value;
+        const language = document.getElementById('language-filter').value;
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (confidence) params.append('confidence', confidence);
+        if (language) params.append('language', language);
+        
+        const format = prompt('Enter export format (json or csv):', 'json');
+        if (format && ['json', 'csv'].includes(format.toLowerCase())) {
+            window.open(`/api/export?format=${format}&${params.toString()}`, '_blank');
+        }
+    }
+
+    // Show audio details modal (reuse from dashboard)
+    function showAudioModal(audioInfo) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Audio Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>File Information</h6>
+                                <p><strong>ID:</strong> ${audioInfo.audio_file.id}</p>
+                                <p><strong>Duration:</strong> ${audioInfo.audio_file.duration}s</p>
+                                <p><strong>File Size:</strong> ${formatFileSize(audioInfo.audio_file.file_size)}</p>
+                                <p><strong>Created:</strong> ${formatDate(audioInfo.audio_file.created_at)}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Transcription</h6>
+                                ${audioInfo.transcript ? `
+                                    <p><strong>Text:</strong> ${audioInfo.transcript.transcription}</p>
+                                    <p><strong>Confidence:</strong> ${(audioInfo.transcript.confidence * 100).toFixed(1)}%</p>
+                                    <p><strong>Language:</strong> ${audioInfo.transcript.language || 'Unknown'}</p>
+                                ` : '<p class="text-muted">No transcription available</p>'}
+                            </div>
+                        </div>
+                        ${audioInfo.metadata ? `
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Metadata</h6>
+                                    <pre class="bg-light p-2 rounded">${JSON.stringify(audioInfo.metadata, null, 2)}</pre>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-info" onclick="playAudio(${audioInfo.audio_file.id})">
+                            <i class="fas fa-play me-2"></i>Play
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="downloadAudio(${audioInfo.audio_file.id})">
+                            <i class="fas fa-download me-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        modal.addEventListener('hidden.bs.modal', function() {
+            document.body.removeChild(modal);
+        });
+    }
+</script>
+{% endblock %} 

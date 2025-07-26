@@ -1,0 +1,536 @@
+{% extends "base.html" %}
+
+{% block title %}Search Content - WhisperPOC{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-search me-2"></i>
+            Search Content
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Search Interface -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-search me-2"></i>
+                    Semantic Search
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <label for="search-query" class="form-label">Search Query</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search-query" 
+                               placeholder="Enter your search query (e.g., 'meeting about project timeline', 'discussion about budget')">
+                        <button class="btn btn-primary" type="button" onclick="performSearch()">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        Use natural language to search through your audio transcriptions. The search uses semantic similarity to find relevant content.
+                    </div>
+                </div>
+
+                <!-- Search Options -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="search-limit" class="form-label">Number of Results</label>
+                        <select class="form-select" id="search-limit">
+                            <option value="5">5 results</option>
+                            <option value="10" selected>10 results</option>
+                            <option value="20">20 results</option>
+                            <option value="50">50 results</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="similarity-threshold" class="form-label">Similarity Threshold</label>
+                        <select class="form-select" id="similarity-threshold">
+                            <option value="0.5">Low (0.5)</option>
+                            <option value="0.7" selected>Medium (0.7)</option>
+                            <option value="0.8">High (0.8)</option>
+                            <option value="0.9">Very High (0.9)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="search-results" style="display: none;">
+                    <h6 class="mb-3">Search Results</h6>
+                    <div id="results-container">
+                        <!-- Results will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="search-loading" style="display: none;">
+                    <div class="text-center py-4">
+                        <div class="loading-spinner mb-3"></div>
+                        <p class="text-muted">Searching through your audio content...</p>
+                    </div>
+                </div>
+
+                <!-- No Results -->
+                <div id="no-results" style="display: none;">
+                    <div class="text-center py-4">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No results found</h5>
+                        <p class="text-muted">Try adjusting your search query or similarity threshold.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search History -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Searches
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="search-history">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Your recent searches will appear here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Search Tips -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    Search Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Use natural language queries
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Include context and keywords
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Try different phrasings
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Adjust similarity threshold
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Example Queries -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Example Queries
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="setSearchQuery('meeting about project timeline')">
+                        "meeting about project timeline"
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="setSearchQuery('discussion about budget and costs')">
+                        "discussion about budget and costs"
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="setSearchQuery('customer feedback and complaints')">
+                        "customer feedback and complaints"
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="setSearchQuery('technical issues and troubleshooting')">
+                        "technical issues and troubleshooting"
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm w-100" onclick="setSearchQuery('team collaboration and communication')">
+                        "team collaboration and communication"
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Statistics -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Search Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="search-stats">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Audio Files:</span>
+                        <span id="total-audio" class="badge bg-primary">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>With Embeddings:</span>
+                        <span id="with-embeddings" class="badge bg-success">-</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Searchable Content:</span>
+                        <span id="searchable-content" class="badge bg-info">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let searchHistory = [];
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSearchStatistics();
+        loadSearchHistory();
+        
+        // Add event listener for Enter key
+        document.getElementById('search-query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    });
+
+    // Set search query from example
+    function setSearchQuery(query) {
+        document.getElementById('search-query').value = query;
+        performSearch();
+    }
+
+    // Perform semantic search
+    function performSearch() {
+        const query = document.getElementById('search-query').value.trim();
+        const limit = parseInt(document.getElementById('search-limit').value);
+        const threshold = parseFloat(document.getElementById('similarity-threshold').value);
+        
+        if (!query) {
+            showNotification('Please enter a search query', 'warning');
+            return;
+        }
+
+        // Show loading
+        document.getElementById('search-loading').style.display = 'block';
+        document.getElementById('search-results').style.display = 'none';
+        document.getElementById('no-results').style.display = 'none';
+
+        // Perform search
+        fetch('/api/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: query,
+                limit: limit,
+                threshold: threshold
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('search-loading').style.display = 'none';
+            
+            if (data.success) {
+                displaySearchResults(data.results, query);
+                addToSearchHistory(query);
+            } else {
+                showNotification('Search failed: ' + data.error, 'danger');
+                document.getElementById('no-results').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            document.getElementById('search-loading').style.display = 'none';
+            showNotification('Error performing search: ' + error.message, 'danger');
+            document.getElementById('no-results').style.display = 'block';
+        });
+    }
+
+    // Display search results
+    function displaySearchResults(results, query) {
+        const container = document.getElementById('results-container');
+        
+        if (results.length === 0) {
+            document.getElementById('no-results').style.display = 'block';
+            return;
+        }
+
+        let html = `
+            <div class="mb-3">
+                <small class="text-muted">Found ${results.length} result(s) for "${query}"</small>
+            </div>
+        `;
+
+        results.forEach((result, index) => {
+            const similarity = (result.similarity * 100).toFixed(1);
+            const confidence = result.confidence ? (result.confidence * 100).toFixed(1) : 'N/A';
+            
+            html += `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">Audio #${result.audio_id}</h6>
+                            <div>
+                                <span class="badge bg-success me-2">${similarity}% similar</span>
+                                ${confidence !== 'N/A' ? `<span class="badge bg-info">${confidence}% confidence</span>` : ''}
+                            </div>
+                        </div>
+                        
+                        <p class="card-text text-muted mb-2">
+                            <strong>Transcription:</strong> ${result.transcription || 'No transcription available'}
+                        </p>
+                        
+                        <div class="row text-muted small mb-2">
+                            <div class="col-md-4">
+                                <i class="fas fa-clock me-1"></i> ${formatDuration(result.duration)}s
+                            </div>
+                            <div class="col-md-4">
+                                <i class="fas fa-calendar me-1"></i> ${formatDate(result.created_at)}
+                            </div>
+                            <div class="col-md-4">
+                                <i class="fas fa-language me-1"></i> ${result.language || 'Unknown'}
+                            </div>
+                        </div>
+                        
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewAudio(${result.audio_id})" title="View Details">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button class="btn btn-outline-success" onclick="downloadAudio(${result.audio_id})" title="Download">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <button class="btn btn-outline-info" onclick="playAudio(${result.audio_id})" title="Play">
+                                <i class="fas fa-play"></i> Play
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        document.getElementById('search-results').style.display = 'block';
+    }
+
+    // Add query to search history
+    function addToSearchHistory(query) {
+        // Remove if already exists
+        searchHistory = searchHistory.filter(q => q !== query);
+        
+        // Add to beginning
+        searchHistory.unshift(query);
+        
+        // Keep only last 10 searches
+        if (searchHistory.length > 10) {
+            searchHistory = searchHistory.slice(0, 10);
+        }
+        
+        // Save to localStorage
+        localStorage.setItem('whisperpoc_search_history', JSON.stringify(searchHistory));
+        
+        // Update display
+        loadSearchHistory();
+    }
+
+    // Load search history
+    function loadSearchHistory() {
+        const history = localStorage.getItem('whisperpoc_search_history');
+        if (history) {
+            searchHistory = JSON.parse(history);
+        }
+        
+        const container = document.getElementById('search-history');
+        
+        if (searchHistory.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    Your recent searches will appear here
+                </div>
+            `;
+        } else {
+            let html = '';
+            searchHistory.forEach(query => {
+                html += `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <button class="btn btn-link btn-sm text-start p-0" onclick="setSearchQuery('${query}')">
+                            ${query}
+                        </button>
+                        <button class="btn btn-link btn-sm text-danger p-0" onclick="removeFromHistory('${query}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+    }
+
+    // Remove from search history
+    function removeFromHistory(query) {
+        searchHistory = searchHistory.filter(q => q !== query);
+        localStorage.setItem('whisperpoc_search_history', JSON.stringify(searchHistory));
+        loadSearchHistory();
+    }
+
+    // Load search statistics
+    function loadSearchStatistics() {
+        fetch('/api/statistics')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('total-audio').textContent = data.statistics.audio_count;
+                    document.getElementById('with-embeddings').textContent = data.statistics.embedding_count;
+                    document.getElementById('searchable-content').textContent = data.statistics.embedding_count;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading search statistics:', error);
+            });
+    }
+
+    // View audio details (reuse from other templates)
+    function viewAudio(audioId) {
+        fetch(`/api/audio/${audioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAudioModal(data.audio_info);
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading audio details', 'danger');
+            });
+    }
+
+    // Download audio file
+    function downloadAudio(audioId) {
+        window.open(`/api/audio/${audioId}/download`, '_blank');
+    }
+
+    // Play audio file
+    function playAudio(audioId) {
+        fetch(`/api/audio/${audioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const audioInfo = data.audio_info;
+                    const audioPlayer = document.getElementById('audio-player');
+                    const audioInfoDiv = document.getElementById('audio-info');
+                    
+                    // Set audio source
+                    audioPlayer.src = `/api/audio/${audioId}/download`;
+                    
+                    // Update info
+                    audioInfoDiv.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Duration:</strong> ${audioInfo.audio_file.duration}s<br>
+                                <strong>File Size:</strong> ${formatFileSize(audioInfo.audio_file.file_size)}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Created:</strong> ${formatDate(audioInfo.audio_file.created_at)}<br>
+                                <strong>Confidence:</strong> ${audioInfo.transcript ? (audioInfo.transcript.confidence * 100).toFixed(1) + '%' : 'N/A'}
+                            </div>
+                        </div>
+                        ${audioInfo.transcript ? `
+                            <div class="mt-3">
+                                <strong>Transcription:</strong><br>
+                                <p class="text-muted">${audioInfo.transcript.transcription}</p>
+                            </div>
+                        ` : ''}
+                    `;
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('audioPlayerModal'));
+                    modal.show();
+                } else {
+                    showNotification(data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                showNotification('Error loading audio file', 'danger');
+            });
+    }
+
+    // Show audio details modal (reuse from other templates)
+    function showAudioModal(audioInfo) {
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Audio Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>File Information</h6>
+                                <p><strong>ID:</strong> ${audioInfo.audio_file.id}</p>
+                                <p><strong>Duration:</strong> ${audioInfo.audio_file.duration}s</p>
+                                <p><strong>File Size:</strong> ${formatFileSize(audioInfo.audio_file.file_size)}</p>
+                                <p><strong>Created:</strong> ${formatDate(audioInfo.audio_file.created_at)}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Transcription</h6>
+                                ${audioInfo.transcript ? `
+                                    <p><strong>Text:</strong> ${audioInfo.transcript.transcription}</p>
+                                    <p><strong>Confidence:</strong> ${(audioInfo.transcript.confidence * 100).toFixed(1)}%</p>
+                                    <p><strong>Language:</strong> ${audioInfo.transcript.language || 'Unknown'}</p>
+                                ` : '<p class="text-muted">No transcription available</p>'}
+                            </div>
+                        </div>
+                        ${audioInfo.metadata ? `
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Metadata</h6>
+                                    <pre class="bg-light p-2 rounded">${JSON.stringify(audioInfo.metadata, null, 2)}</pre>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-info" onclick="playAudio(${audioInfo.audio_file.id})">
+                            <i class="fas fa-play me-2"></i>Play
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="downloadAudio(${audioInfo.audio_file.id})">
+                            <i class="fas fa-download me-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+        modal.addEventListener('hidden.bs.modal', function() {
+            document.body.removeChild(modal);
+        });
+    }
+</script>
+{% endblock %} 
