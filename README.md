@@ -4,6 +4,7 @@ A comprehensive audio recording, transcription, and storage system using OpenAI 
 
 ## 🎯 **Features**
 
+- **🌐 Web Interface** - Modern Flask-based web application with real-time features
 - **🎤 Real-time Audio Recording** - Record audio with custom duration and metadata
 - **🎯 Whisper Transcription** - Automatic speech-to-text using OpenAI Whisper
 - **🗄️ PostgreSQL Storage** - Enterprise-grade database with full ACID compliance
@@ -17,13 +18,19 @@ A comprehensive audio recording, transcription, and storage system using OpenAI 
 
 ```
 WhisperPOC/
+├── web_interface/              # 🌐 Web application
+│   ├── app.py                 # Flask application
+│   └── templates/             # HTML templates
 ├── audio_storage_system.py      # Main storage system
 ├── interactive_recorder.py      # Interactive recording interface
 ├── embedding_queries.py         # Vector embedding query engine
 ├── postgres_demo.py            # PostgreSQL demonstration
+├── start_web_interface.py      # Web interface startup script
 ├── requirements.txt            # Python dependencies
 ├── setup.sh                   # Automated setup script
 ├── README.md                  # This file
+├── QUICK_START_WEB.md         # Web interface quick start guide
+├── WEB_INTERFACE_README.md    # Comprehensive web interface guide
 ├── AUDIO_STORAGE_GUIDE.md     # Comprehensive storage guide
 ├── EMBEDDING_QUERY_GUIDE.md   # Vector embedding guide
 ├── POSTGRES_SUMMARY.md        # PostgreSQL implementation summary
@@ -59,7 +66,15 @@ createdb audio_storage_db
 # The system will automatically create tables on first run
 ```
 
-### **4. Start Recording**
+### **4. Start the Web Interface (Recommended)**
+```bash
+# Start the web interface
+python start_web_interface.py
+
+# Open your browser to: http://localhost:5002
+```
+
+### **5. Alternative: Command Line Recording**
 ```bash
 # Interactive recording session
 python interactive_recorder.py
