@@ -1,0 +1,9 @@
+openai-whisper
+torch
+torchaudio
+numpy
+sounddevice
+scipy
+librosa
+webrtcvad
+pyaudio 
